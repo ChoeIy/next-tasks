@@ -21,14 +21,26 @@ export default function Home({ searchParams }: { searchParams?: { status?: strin
     if (res?.success) {
       setMessage('✅ Tarefa adicionada com sucesso!');
       startTransition(async () => setTasks(await getTasks(statusFilter || undefined)));
+    } else {
+      setMessage('❌ Erro ao adicionar tarefa.');
     }
   }
 
   async function handleUpdate(formData: FormData) {
+    const status = formData.get('status')?.toString();
+    if (status === 'concluida') {
+      const confirmar = confirm(
+        'Tem certeza que deseja marcar esta tarefa como concluída? Após isso, ela não poderá mais ser editada.'
+      );
+      if (!confirmar) return;
+    }
+
     const res = await updateTask(formData);
     if (res?.success) {
       setMessage('💾 Alterações salvas!');
       startTransition(async () => setTasks(await getTasks(statusFilter || undefined)));
+    } else {
+      setMessage('❌ Erro ao salvar alterações.');
     }
   }
 
@@ -40,6 +52,8 @@ export default function Home({ searchParams }: { searchParams?: { status?: strin
     if (res?.success) {
       setMessage('🗑️ Tarefa excluída!');
       startTransition(async () => setTasks(await getTasks(statusFilter || undefined)));
+    } else {
+      setMessage('❌ Erro ao excluir tarefa.');
     }
   }
 
@@ -85,60 +99,99 @@ export default function Home({ searchParams }: { searchParams?: { status?: strin
         </button>
         <button
           onClick={() => setStatusFilter('pendente')}
-          className={`px-3 py-1 rounded ${statusFilter === 'pendente' ? 'bg-blue-200' : 'bg-gray-200'}`}
+          className={`px-3 py-1 rounded ${
+            statusFilter === 'pendente' ? 'bg-blue-200' : 'bg-gray-200'
+          }`}
         >
           Pendentes
         </button>
         <button
           onClick={() => setStatusFilter('concluida')}
-          className={`px-3 py-1 rounded ${statusFilter === 'concluida' ? 'bg-blue-200' : 'bg-gray-200'}`}
+          className={`px-3 py-1 rounded ${
+            statusFilter === 'concluida' ? 'bg-blue-200' : 'bg-gray-200'
+          }`}
         >
           Concluídas
         </button>
       </div>
 
       <ul className="space-y-4">
-        {tasks.map((t) => (
-          <li key={t.id} className="border p-3 rounded flex flex-col gap-2">
-            <form
-              action={async (formData) => {
-                await handleUpdate(formData);
-              }}
-              className="flex flex-col gap-2"
+        {tasks.map((t) => {
+          const isCompleted = t.status === 'concluida';
+          return (
+            <li
+              key={t.id}
+              className={`border p-3 rounded flex flex-col gap-2 ${
+                isCompleted ? 'bg-gray-50' : 'bg-white'
+              }`}
             >
-              <input type="hidden" name="id" value={String(t.id)} />
-              <input name="title" defaultValue={t.title} className="border p-1 rounded" />
-              <textarea
-                name="description"
-                defaultValue={t.description}
-                className="border p-1 rounded"
-              />
-              <select
-                name="status"
-                defaultValue={t.status || 'pendente'}
-                className="border p-1 rounded"
+              <form
+                action={async (formData) => {
+                  await handleUpdate(formData);
+                }}
+                className="flex flex-col gap-2"
               >
-                <option value="pendente">Pendente</option>
-                <option value="concluida">Concluida</option>
-              </select>
-              <div className="flex gap-2 items-center">
-                <button type="submit" className="bg-green-500 text-white px-2 py-1 rounded">
-                  Salvar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(t.id)}
-                  className="bg-red-500 text-white px-2 py-1 rounded"
+                <input type="hidden" name="id" value={String(t.id)} />
+
+                <input
+                  name="title"
+                  defaultValue={t.title}
+                  disabled={isCompleted}
+                  className={`border p-1 rounded ${
+                    isCompleted ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
+                  }`}
+                />
+
+                <textarea
+                  name="description"
+                  defaultValue={t.description}
+                  disabled={isCompleted}
+                  className={`border p-1 rounded ${
+                    isCompleted ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
+                  }`}
+                />
+
+                <select
+                  name="status"
+                  defaultValue={t.status || 'pendente'}
+                  disabled={isCompleted}
+                  className={`border p-1 rounded ${
+                    isCompleted ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
+                  }`}
                 >
-                  Deletar
-                </button>
-              </div>
-              <div className="text-sm text-gray-600">
-                Status atual: {t.status === 'concluida' ? 'Concluida' : 'Pendente'}
-              </div>
-            </form>
-          </li>
-        ))}
+                  <option value="pendente">Pendente</option>
+                  <option value="concluida">Concluída</option>
+                </select>
+
+                <div className="flex gap-2 items-center">
+                  {!isCompleted && (
+                    <button
+                      type="submit"
+                      className="bg-green-500 text-white px-2 py-1 rounded"
+                    >
+                      Salvar
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(t.id)}
+                    className="bg-red-500 text-white px-2 py-1 rounded"
+                  >
+                    Deletar
+                  </button>
+                </div>
+
+                <div
+                  className={`text-sm ${
+                    isCompleted ? 'text-green-600 font-semibold' : 'text-gray-600'
+                  }`}
+                >
+                  Status atual: {isCompleted ? 'Concluída ✅' : 'Pendente'}
+                </div>
+              </form>
+            </li>
+          );
+        })}
       </ul>
     </main>
   );
